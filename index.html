@@ -321,34 +321,11 @@ let accessToken = null, driveFileId = null, saveTimer = null;
 let flowChartInst = null, catChartInst = null;
 
 let data = {
-  txs: [
-    {id:1,name:'Salario',cat:'Ingreso',amount:5200,type:'ingreso',date:'2026-03-01'},
-    {id:2,name:'Renta',cat:'Vivienda',amount:-1200,type:'gasto',date:'2026-03-03'},
-    {id:3,name:'Supermercado',cat:'Comida',amount:-320,type:'gasto',date:'2026-03-05'},
-    {id:4,name:'Netflix',cat:'Entretenimiento',amount:-18,type:'gasto',date:'2026-03-07'},
-    {id:5,name:'Gasolina',cat:'Transporte',amount:-85,type:'gasto',date:'2026-03-08'},
-    {id:6,name:'Freelance',cat:'Ingreso extra',amount:800,type:'ingreso',date:'2026-03-11'},
-  ],
-  budgets: [
-    {cat:'Vivienda',limit:1400,color:'#378ADD'},
-    {cat:'Comida',limit:500,color:'#1D9E75'},
-    {cat:'Transporte',limit:200,color:'#D85A30'},
-    {cat:'Entretenimiento',limit:150,color:'#BA7517'},
-  ],
-  accounts: [
-    {id:1,name:'Cuenta corriente',bank:'Banco Popular',bal:8430,color:'#E6F1FB'},
-    {id:2,name:'Cuenta de ahorros',bank:'FirstBank',bal:12200,color:'#E1F5EE'},
-    {id:3,name:'Tarjeta de crédito',bank:'Visa',bal:-1850,color:'#FAECE7'},
-  ],
-  goals: [
-    {id:1,name:'Fondo de emergencia',saved:6000,target:10000,color:'#1D9E75'},
-    {id:2,name:'Vacaciones',saved:2200,target:5000,color:'#378ADD'},
-  ],
-  history: [
-    {month:'Oct',income:5000,expenses:3800},{month:'Nov',income:5200,expenses:4100},
-    {month:'Dic',income:6100,expenses:5200},{month:'Ene',income:5200,expenses:3700},
-    {month:'Feb',income:5050,expenses:3660},{month:'Mar',income:6000,expenses:3960},
-  ]
+  txs: [],
+  budgets: [],
+  accounts: [],
+  goals: [],
+  history: []
 };
 
 // ── AUTH ──
@@ -500,6 +477,10 @@ function populateDateSelect() {
 }
 
 // ── DASHBOARD ──
+
+function emptyState(msg) {
+  return `<p style="font-size:13px;color:var(--text2);padding:1rem 8px;text-align:center">${msg}</p>`;
+}
 function renderDashMetrics() {
   const bal=data.accounts.reduce((s,a)=>s+a.bal,0);
   const inc=data.txs.filter(t=>t.type==='ingreso').reduce((s,t)=>s+t.amount,0);
@@ -521,7 +502,7 @@ function txHTML(t, del) {
 }
 
 function renderDashTxs() {
-  document.getElementById('dash-txs').innerHTML=[...data.txs].reverse().slice(0,5).map(t=>txHTML(t,false)).join('');
+  const recent=[...data.txs].reverse().slice(0,5); document.getElementById('dash-txs').innerHTML=recent.length?recent.map(t=>txHTML(t,false)).join(''):emptyState('Aún no hay transacciones. Agrégalas en la sección Transacciones.');
 }
 
 // ── TRANSACTIONS ──
@@ -584,7 +565,7 @@ function delBudget(i) { data.budgets.splice(i,1); renderBudgets(); scheduleSave(
 
 // ── ACCOUNTS ──
 function renderAccounts() {
-  document.getElementById('accounts-list').innerHTML=data.accounts.map(a=>`
+  document.getElementById('accounts-list').innerHTML=data.accounts.length?data.accounts.map(a=>`
     <div class="account-item">
       <div class="account-left">
         <div class="account-icon" style="background:${a.color}">🏦</div>
@@ -594,7 +575,7 @@ function renderAccounts() {
         <div style="font-size:15px;font-weight:700;color:${a.bal<0?'var(--red)':'var(--text)'}">${fmt(a.bal)}</div>
         <button class="btn-del" onclick="delAccount(${a.id})">×</button>
       </div>
-    </div>`).join('');
+    </div>`).join(''):emptyState('Aún no tienes cuentas. Agrégalas arriba.');
 }
 function addAccount() {
   const name=document.getElementById('acc-name').value.trim();
@@ -609,7 +590,7 @@ function delAccount(id) { data.accounts=data.accounts.filter(a=>a.id!==id); rend
 
 // ── GOALS ──
 function renderGoals() {
-  document.getElementById('goals-list').innerHTML=data.goals.map(g=>{
+  document.getElementById('goals-list').innerHTML=data.goals.length?data.goals.map(g=>{
     const pct=Math.round((g.saved/g.target)*100);
     return `<div class="goal-card">
       <div class="goal-header">
@@ -621,7 +602,7 @@ function renderGoals() {
       </div>
       <div class="prog-bar" style="height:10px"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${g.color}"></div></div>
     </div>`;
-  }).join('');
+  }).join(''):emptyState('Aún no tienes metas. Agrégalas arriba.');
 }
 function addGoal() {
   const name=document.getElementById('goal-name').value.trim();
@@ -637,7 +618,13 @@ function delGoal(id) { data.goals=data.goals.filter(g=>g.id!==id); renderGoals()
 // ── CHARTS ──
 function buildCharts() {
   if (flowChartInst) flowChartInst.destroy();
-  flowChartInst = new Chart(document.getElementById('flowChart'), {
+  const flowEl = document.getElementById('flowChart');
+  const flowCard = flowEl.closest('.card');
+  if (!data.history || data.history.length === 0) {
+    flowCard.style.display = 'none'; return;
+  }
+  flowCard.style.display = 'block';
+  flowChartInst = new Chart(flowEl, {
     type:'bar',
     data:{
       labels:data.history.map(h=>h.month),
