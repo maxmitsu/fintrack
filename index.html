@@ -148,37 +148,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 
 
-
-/* DASHBOARD WIDGETS */
-.net-worth-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
-.net-worth-label { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
-.net-worth-value { font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -1px; margin-bottom: 1rem; }
-.dash-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
-.dash-grid2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
-.stat-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
-.stat-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
-.stat-value { font-size: 24px; font-weight: 700; color: var(--text); }
-.stat-sub { font-size: 12px; margin-top: 5px; }
-.stat-sub.up { color: var(--green); }
-.stat-sub.down { color: var(--red); }
-.accounts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.acc-mini { background: var(--bg2); border-radius: var(--radius-md); padding: 1rem; }
-.acc-mini-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-.acc-mini-value { font-size: 18px; font-weight: 700; color: var(--text); }
-.acc-mini-sub { font-size: 11px; margin-top: 3px; color: var(--text2); }
-.goal-row { margin-bottom: 14px; }
-.goal-row:last-child { margin-bottom: 0; }
-.goal-row-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
-.goal-row-name { font-weight: 500; color: var(--text); }
-.goal-row-pct { color: var(--text2); }
-.goal-row-amounts { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-top: 3px; }
-.tx-search { width: 100%; padding: 7px 12px; font-size: 13px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg2); color: var(--text); outline: none; margin-bottom: 10px; }
-.bud-row { margin-bottom: 10px; }
-.bud-row-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-.bud-row-name { font-weight: 500; color: var(--text); }
-.bud-row-amounts { font-size: 12px; color: var(--text2); }
-.bud-row-amounts.over { color: var(--red); font-weight: 600; }
-
 /* PAGOS */
 .pago-item { display:flex; align-items:center; gap:12px; padding:10px 8px; border-radius:var(--radius-md); }
 .pago-item:hover { background:var(--bg2); }
@@ -237,7 +206,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 
 <div class="app">
   <div class="sidebar" id="sidebar">
-    <div class="logo"><img src="icon-192.png" style="width:28px;height:28px;border-radius:7px;vertical-align:middle;margin-right:8px" />fin<span>track</span></div>
+    <div class="logo"><img src="icon-192.png" style="width:26px;height:26px;border-radius:7px;vertical-align:middle;margin-right:8px" />fin<span>track</span></div>
     <div class="nav-item active" onclick="nav('dashboard',this,'Dashboard')"><span class="nav-icon">◈</span> Dashboard</div>
     <div class="nav-item" onclick="nav('transacciones',this,'Transacciones')"><span class="nav-icon">↕</span> Transacciones</div>
     <div class="nav-item" onclick="nav('presupuesto',this,'Presupuesto')"><span class="nav-icon">▦</span> Presupuesto</div>
@@ -261,51 +230,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 
     <div class="section active" id="sec-dashboard">
       <div class="page-title">
-        Mis finanzas
+        Tu resumen
         <span class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Sincronizado</span></span>
       </div>
-
-      <!-- Net worth + income + expenses -->
-      <div class="dash-grid">
-        <div class="net-worth-card">
-          <div class="net-worth-label">Patrimonio neto</div>
-          <div class="net-worth-value" id="dash-networth">$0.00</div>
-          <div style="position:relative;height:100px"><canvas id="flowChart"></canvas></div>
+      <div class="metrics" id="dash-metrics"></div>
+      <div class="card">
+        <div class="card-title">Flujo de efectivo — últimos 6 meses</div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#5DCAA5"></span>Ingresos</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#F09595"></span>Gastos</span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Ingresos</div>
-          <div class="stat-value green" id="dash-income">$0.00</div>
-          <div class="stat-sub up" id="dash-income-sub"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Gastos</div>
-          <div class="stat-value red" id="dash-expenses">$0.00</div>
-          <div class="stat-sub" id="dash-expenses-sub"></div>
-        </div>
+        <div style="position:relative;height:220px"><canvas id="flowChart"></canvas></div>
       </div>
-
-      <!-- Accounts + Goals -->
-      <div class="dash-grid2">
+      <div class="row">
         <div class="card">
-          <div class="card-title" style="display:flex;justify-content:space-between"><span>Cuentas</span><span style="cursor:pointer;font-weight:400;color:var(--green)" onclick="nav('cuentas',document.querySelectorAll('.nav-item')[3],'Cuentas')">Ver todo</span></div>
-          <div class="accounts-grid" id="dash-accounts"></div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="display:flex;justify-content:space-between"><span>Metas</span><span style="cursor:pointer;font-weight:400;color:var(--green)" onclick="nav('metas',document.querySelectorAll('.nav-item')[4],'Metas')">Editar</span></div>
-          <div id="dash-goals"></div>
-        </div>
-      </div>
-
-      <!-- Recent txs + budgets -->
-      <div class="dash-grid2">
-        <div class="card">
-          <div class="card-title">Transacciones recientes</div>
-          <input class="tx-search" id="dash-search" placeholder="Buscar..." oninput="searchDashTxs(this.value)" />
+          <div class="card-title">Últimas transacciones</div>
           <div id="dash-txs"></div>
         </div>
         <div class="card">
-          <div class="card-title" style="display:flex;justify-content:space-between"><span>Presupuestos</span></div>
-          <div id="dash-budgets"></div>
+          <div class="card-title">Gastos por categoría</div>
+          <div id="cat-legend" class="legend"></div>
+          <div style="position:relative;height:180px"><canvas id="catChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -610,14 +555,9 @@ function txHTML(t, del) {
   </div>`;
 }
 
-function renderDashTxs(filter) {
-  const q = (filter||''). toLowerCase();
-  let list = [...data.txs].reverse();
-  if (q) list = list.filter(t=>t.name.toLowerCase().includes(q)||t.cat.toLowerCase().includes(q));
-  else list = list.slice(0,8);
-  document.getElementById('dash-txs').innerHTML = list.length ? list.map(t=>txHTML(t,false)).join('') : emptyState('Aún no hay transacciones.');
+function renderDashTxs() {
+  const recent=[...data.txs].reverse().slice(0,5); document.getElementById('dash-txs').innerHTML=recent.length?recent.map(t=>txHTML(t,false)).join(''):emptyState('Aún no hay transacciones. Agrégalas en la sección Transacciones.');
 }
-function searchDashTxs(v) { renderDashTxs(v); }
 
 // ── TRANSACTIONS ──
 function renderFullTxs(filter) {
