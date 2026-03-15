@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FinTrack — Mis Finanzas</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0F6E56" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="FinTrack" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 <script src="https://accounts.google.com/gsi/client" async></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -659,6 +666,15 @@ function renderCatChart() {
     type:'doughnut',
     data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
+  });
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/fintrack/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
   });
 }
 </script>
