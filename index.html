@@ -70,6 +70,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .user-email { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sign-out-btn { width: 100%; font-size: 12px; padding: 7px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: none; color: var(--text2); cursor: pointer; transition: all 0.15s; }
 .sign-out-btn:hover { background: var(--bg2); color: var(--text); }
+/* SYNC BAR */
+.sync-bar { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.online-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.online-dot.online { background:#1D9E75; }
+.online-dot.offline { background:#E24B4A; }
+.sync-bar-text { font-size:11px; color:var(--text2); flex:1; min-width:0; }
+.sync-btn { font-size:11px; padding:4px 10px; border:0.5px solid var(--border); border-radius:var(--radius-md); background:none; color:var(--text2); cursor:pointer; white-space:nowrap; }
+.sync-btn:hover { background:var(--bg2); color:var(--text); }
+.sync-btn:disabled { opacity:0.4; cursor:default; }
 
 /* MAIN */
 .app { display: flex; min-height: 100vh; }
@@ -191,7 +200,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
       Continuar con Google
     </button>
     <div class="login-err" id="login-err"></div>
-    <div class="login-note">Solo tú puedes acceder. Los datos se guardan como <strong>fintrack.json</strong> en tu Google Drive (carpeta privada de la app).</div>
   </div>
 </div>
 
@@ -222,7 +230,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
           <div class="user-email" id="sidebar-email">—</div>
         </div>
       </div>
-      <button class="sign-out-btn" onclick="signOut()">Cerrar sesión</button>
+      <div class="sync-bar">
+        <span class="online-dot" id="online-dot"></span>
+        <span class="sync-bar-text" id="sync-bar-text">—</span>
+        <button class="sync-btn" id="sync-btn" onclick="manualSync()">↻ Sync</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px" id="last-saved-text"></div>
+      <button class="sign-out-btn" style="margin-top:10px" onclick="signOut()">Cerrar sesión</button>
     </div>
   </div>
 
@@ -478,7 +492,46 @@ function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveTo
 function setSyncStatus(state, text) {
   document.getElementById('sync-dot').className = 'sync-dot'+(state==='saving'?' saving':'');
   document.getElementById('sync-text').textContent = text;
+  updateSyncBar(state, text);
 }
+
+function updateSyncBar(state, text) {
+  const isOnline = navigator.onLine;
+  const dot = document.getElementById('online-dot');
+  const barText = document.getElementById('sync-bar-text');
+  const btn = document.getElementById('sync-btn');
+  const lastSaved = document.getElementById('last-saved-text');
+  if (!dot) return;
+
+  dot.className = 'online-dot ' + (isOnline ? 'online' : 'offline');
+  if (!isOnline) {
+    barText.textContent = 'Sin conexión';
+    if (btn) btn.disabled = true;
+  } else if (state === 'saving') {
+    barText.textContent = 'Guardando...';
+    if (btn) btn.disabled = true;
+  } else {
+    barText.textContent = 'En línea';
+    if (btn) btn.disabled = false;
+  }
+
+  if (state === 'ok' && text.includes('Guardado')) {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    const d = now.getDate().toString().padStart(2,'0');
+    const mo = (now.getMonth()+1).toString().padStart(2,'0');
+    if (lastSaved) lastSaved.textContent = 'Guardado: '+d+'/'+mo+' '+h+':'+m;
+  }
+}
+
+function manualSync() {
+  if (!navigator.onLine) { showToast('Sin conexión a internet'); return; }
+  saveToDrive();
+}
+
+window.addEventListener('online',  () => updateSyncBar('ok',''));
+window.addEventListener('offline', () => updateSyncBar('offline',''));
 
 // ── APP ──
 function showApp() {
@@ -487,6 +540,7 @@ function showApp() {
   renderAll();
   buildCharts();
   setTimeout(checkPagosAlert, 1000);
+  updateSyncBar('ok','');
 }
 
 function renderAll() {
