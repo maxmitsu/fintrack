@@ -71,6 +71,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .sign-out-btn { width: 100%; font-size: 12px; padding: 7px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: none; color: var(--text2); cursor: pointer; transition: all 0.15s; }
 .sign-out-btn:hover { background: var(--bg2); color: var(--text); }
 
+
+/* MONTH FILTER */
+.month-sel { font-size:12px; padding:6px 10px; border-radius:20px; border:0.5px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer; outline:none; }
+.month-sel:focus { border-color:var(--green-mid); }
+/* EDIT MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:8000; display:flex; align-items:center; justify-content:center; }
+.modal-overlay.hidden { display:none; }
+.modal-box { background:var(--bg); border-radius:var(--radius-lg); padding:1.5rem; width:100%; max-width:420px; border:0.5px solid var(--border); }
+.modal-title { font-size:16px; font-weight:600; color:var(--text); margin-bottom:1.25rem; }
+.modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+.btn-cancel { padding:8px 16px; font-size:13px; border:0.5px solid var(--border); border-radius:var(--radius-md); background:none; color:var(--text2); cursor:pointer; }
+.btn-cancel:hover { background:var(--bg2); }
+/* BUDGET ALERT */
+.bud-alert { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; margin-left:6px; }
+.bud-alert-warn { background:#FAEEDA; color:#BA7517; }
+.bud-alert-over { background:#FCEBEB; color:#A32D2D; }
 /* CONFIG LISTS */
 .cfg-item { display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--radius-md); }
 .cfg-item:hover { background:var(--bg2); }
@@ -294,6 +311,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
         <button class="filter-btn active" onclick="filterTx('todas',this)">Todas</button>
         <button class="filter-btn" onclick="filterTx('gasto',this)">Gastos</button>
         <button class="filter-btn" onclick="filterTx('ingreso',this)">Ingresos</button>
+        <select class="month-sel" id="tx-month-sel" onchange="applyTxFilters()">
+          <option value="">Todos los meses</option>
+        </select>
       </div>
       <div class="card"><div id="tx-full-list"></div></div>
     </div>
@@ -580,6 +600,7 @@ function showApp() {
   buildCharts();
   setTimeout(checkPagosAlert, 1000);
   updateSyncBar('ok','');
+  populateMonthSelect();
 }
 
 function renderAll() {
@@ -644,6 +665,7 @@ function txHTML(t, del) {
     <div class="tx-icon" style="background:${catBg(t.cat)}">${catIcon(t.cat)}</div>
     <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-cat">${t.cat} · ${fmtDate(t.date)}</div></div>
     <div class="tx-amount ${pos?'pos':''}">${pos?'+':''}${fmt(t.amount)}</div>
+    ${del?`<button class="btn-del" style="font-size:13px;padding:4px 7px" onclick="openEditModal(${t.id})" title="Editar">✎</button>`:''}
     ${del?`<button class="btn-del" onclick="delTx(${t.id})">×</button>`:''}
   </div>`;
 }
@@ -653,14 +675,41 @@ function renderDashTxs() {
 }
 
 // ── TRANSACTIONS ──
+let currentTxFilter = 'todas';
+
+function populateMonthSelect() {
+  const sel = document.getElementById('tx-month-sel');
+  if (!sel) return;
+  const months = [...new Set(data.txs.map(t => t.date ? t.date.substring(0,7) : ''))].filter(Boolean).sort().reverse();
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los meses</option>' +
+    months.map(m => {
+      const [y,mo] = m.split('-');
+      const names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      return `<option value="${m}" ${cur===m?'selected':''}>${names[parseInt(mo)-1]} ${y}</option>`;
+    }).join('');
+}
+
+function applyTxFilters() {
+  const month = document.getElementById('tx-month-sel')?.value || '';
+  let list = [...data.txs].reverse();
+  if (currentTxFilter !== 'todas') list = list.filter(t => t.type === currentTxFilter);
+  if (month) list = list.filter(t => t.date && t.date.startsWith(month));
+  document.getElementById('tx-full-list').innerHTML = list.length
+    ? list.map(t => txHTML(t,true)).join('')
+    : '<p style="font-size:13px;color:var(--text2);padding:8px">Sin transacciones.</p>';
+}
+
 function renderFullTxs(filter) {
-  const list=filter==='todas'?[...data.txs].reverse():[...data.txs].reverse().filter(t=>t.type===filter);
-  document.getElementById('tx-full-list').innerHTML=list.length?list.map(t=>txHTML(t,true)).join('')
-    :'<p style="font-size:13px;color:var(--text2);padding:8px">Sin transacciones.</p>';
+  currentTxFilter = filter || 'todas';
+  populateMonthSelect();
+  applyTxFilters();
 }
 function filterTx(f,btn) {
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); renderFullTxs(f);
+  btn.classList.add('active');
+  currentTxFilter = f;
+  applyTxFilters();
 }
 function addTx() {
   const name=document.getElementById('tx-name').value.trim();
@@ -672,7 +721,7 @@ function addTx() {
   document.getElementById('tx-name').value='';
   document.getElementById('tx-amount').value='';
   document.getElementById('tx-cat').value='';
-  renderAll(); scheduleSave(); showToast('Transacción agregada ✓');
+  renderAll(); populateMonthSelect(); scheduleSave(); showToast('Transacción agregada ✓');
 }
 function delTx(id) { data.txs=data.txs.filter(t=>t.id!==id); renderAll(); scheduleSave(); showToast('Eliminada'); }
 
@@ -988,6 +1037,57 @@ function delCfgDesc(i) {
   data.descs.splice(i, 1);
   renderConfig(); scheduleSave(); showToast('Descripción eliminada');
 }
+
+// ── EDIT TRANSACTION ──
+let editingId = null;
+
+function openEditModal(id) {
+  const t = data.txs.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  document.getElementById('edit-name').value = t.name;
+  document.getElementById('edit-amount').value = t.amount;
+  document.getElementById('edit-cat').value = t.cat;
+  // populate date select
+  const sel = document.getElementById('edit-date');
+  sel.innerHTML = '';
+  const today = new Date();
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const val = d.toISOString().split('T')[0];
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = fmtDate(val);
+    if (val === t.date) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.add('hidden');
+  editingId = null;
+}
+
+function saveEditTx() {
+  if (!editingId) return;
+  const idx = data.txs.findIndex(x => x.id === editingId);
+  if (idx === -1) return;
+  const name = document.getElementById('edit-name').value.trim();
+  const amount = parseFloat(document.getElementById('edit-amount').value);
+  const cat = document.getElementById('edit-cat').value.trim() || 'Otros';
+  const date = document.getElementById('edit-date').value;
+  if (!name || isNaN(amount)) { showToast('Completa nombre y monto'); return; }
+  data.txs[idx] = { ...data.txs[idx], name, amount, cat, date, type: amount > 0 ? 'ingreso' : 'gasto' };
+  closeEditModal();
+  renderAll(); populateMonthSelect(); scheduleSave(); showToast('Transacción actualizada ✓');
+}
+
+// Close modal clicking outside
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
 </script>
 
 <script>
@@ -999,5 +1099,22 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+<!-- EDIT TRANSACTION MODAL -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-title">Editar transacción</div>
+    <div class="modal-grid">
+      <input class="form-input" id="edit-name" placeholder="Descripción" list="desc-list" style="grid-column:1/-1" />
+      <input class="form-input" id="edit-amount" type="number" placeholder="Monto" />
+      <input class="form-input" id="edit-cat" placeholder="Categoría" list="cat-list" />
+      <select class="form-select" id="edit-date" style="grid-column:1/-1"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-add" onclick="saveEditTx()">Guardar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
