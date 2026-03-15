@@ -345,19 +345,33 @@ let data = {
 };
 
 // ── AUTH ──
+let tokenClient;
+
 function startLogin() {
   document.getElementById('login-err').textContent = '';
   if (!window.google) { document.getElementById('login-err').textContent = 'Cargando... intenta de nuevo.'; return; }
-  google.accounts.oauth2.initTokenClient({
+  tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
     callback: async (resp) => {
       if (resp.error) { document.getElementById('login-err').textContent = 'Error al iniciar sesión: ' + resp.error; return; }
       accessToken = resp.access_token;
-      await loadUserInfo();
+      const u = await loadUserInfo();
+      if (u.email) localStorage.setItem('ft_hint', u.email);
       await loadFromDrive();
       showApp();
+      scheduleTokenRenew();
     }
-  }).requestAccessToken({prompt:'consent'});
+  });
+  const hint = localStorage.getItem('ft_hint') || '';
+  tokenClient.requestAccessToken({prompt: hint ? '' : 'consent', login_hint: hint});
+}
+
+function scheduleTokenRenew() {
+  setTimeout(() => {
+    if (!tokenClient) return;
+    tokenClient.requestAccessToken({prompt:'', login_hint: localStorage.getItem('ft_hint')||''});
+    scheduleTokenRenew();
+  }, 45 * 60 * 1000);
 }
 
 async function loadUserInfo() {
@@ -371,12 +385,14 @@ async function loadUserInfo() {
       const ta = document.getElementById('topbar-avatar');
       ta.src = u.picture; ta.style.display = 'block';
     }
-  } catch(e) {}
+    return u;
+  } catch(e) { return {}; }
 }
 
 function signOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
   accessToken = null; driveFileId = null;
+  localStorage.removeItem('ft_hint');
   document.getElementById('login-screen').classList.remove('hidden');
 }
 
